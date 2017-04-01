@@ -1,0 +1,7 @@
+google:
+  service_info_path:
+    'path to json' 
+  project_id:
+    'project_id'
+github:
+  oauth_token: 'token'

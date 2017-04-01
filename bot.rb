@@ -3,11 +3,17 @@ require 'pry'
 require 'google/cloud/vision'
 require 'watir'
 
-# Your Google Cloud Platform project ID
-PROJECT_ID = "i-enterprise-163118"
+RUBYCONF_GAME_URL = 'https://play.rubyconference.by/game'.freeze
 
-# Instantiates a client
-@vision = Google::Cloud::Vision.new project: PROJECT_ID
+def initialize_google_environment
+  ENV['GOOGLE_APPLICATION_CREDENTIALS'] = CONFIG['google']['service_info_path']
+end
+
+CONFIG = YAML.safe_load(File.read('./config.yml'))
+
+initialize_google_environment
+
+@vision = Google::Cloud::Vision.new project: CONFIG['google']['project_id']
 
 EXCEPTIONS_MERGED = [
   'Added option to set specific revision when using Subversion as SCM',
@@ -18,22 +24,22 @@ EXCEPTIONS_MERGED = [
   'Try fixing Travis build',
   'Remove duplicated if',
   'Allow Sidekiq Client to push push bulk job with class as a String'
-]
+].freeze
 
 EXCEPTIONS_REJECTED = [
   'rake test:core task'
-]
+].freeze
 
 def words_from(string)
   string.tr('^A-Za-z', ' ').strip.squeeze(' ')
 end
 
 def github_search_query(search_value)
-  %Q{language:ruby is:pr is:merged in:title "#{search_value}"} 
+  %(language:ruby is:pr is:merged in:title "#{search_value}")
 end
 
 def img2text(img_url)
-  text = @vision.image(img_url).text.text.split(/\n/).join(' ')
+  @vision.image(img_url).text.text.split(/\n/).join(' ')
 end
 
 def compared_str(source_s, github_s)
@@ -41,11 +47,11 @@ def compared_str(source_s, github_s)
 end
 
 def pr_title
-  title = @browser.div(class: 'pull-request-title')
+  @browser.div(class: 'pull-request-title')
 end
 
 def pr_title_img
-  title = @browser.img(class: 'pull-request-title_as_image')
+  @browser.img(class: 'pull-request-title_as_image')
 end
 
 def click_answer(text)
@@ -62,7 +68,7 @@ def click_next_task
 end
 
 def any_header_exist?
-  pr_title.exist? || pr_title_img.exist? 
+  pr_title.exist? || pr_title_img.exist?
 end
 
 def pr_title_old?
@@ -78,31 +84,31 @@ def game_over?
 end
 
 def restart_game!
-  @browser.goto 'https://play.rubyconference.by/game'
+  @browser.goto(RUBYCONF_GAME_URL)
   @head_img_counter = 0
-  @browser.wait_until(200){ any_header_exist? }
+  @browser.wait_until(200) { any_header_exist? }
   @header = ''
-  @old_img_url = '' 
+  @old_img_url = ''
   game_loop
 end
 
 def game_loop
-  until game_over? do
-    if @head_img_counter < 15 
+  until game_over?
+    if @head_img_counter < 15
       @browser.wait_until(60) { pr_title_old? }
     else
       @browser.wait_until(60) { pr_title_img_old? }
-      @old_img_url = pr_title_img.src 
+      @old_img_url = pr_title_img.src
     end
 
-    @header = pr_title_img.exist? ? img2text(try(pr_title_img, :src)) : pr_title.text 
+    @header = pr_title_img.exist? ? img2text(try(pr_title_img, :src)) : pr_title.text
     @head_img_counter += 1
 
-    searcher = Github::Client::Search.new(oauth_token: '2362f396ced84ded220b4ea19cbdc8a9fab13383')
+    searcher = Github::Client::Search.new(oauth_token: CONFIG['github']['oauth_token'])
     result = -1
     result = searcher.issues(q: github_search_query(@header)).body.items.inject(0) do |res_count, issue|
       p words_from(issue[:title])
-      res_count += compared_str(@header, issue[:title]) ? 1 : 0
+      res_count + compared_str(@header, issue[:title]) ? 1 : 0
     end
 
     result += 1 if EXCEPTIONS_MERGED.include?(@header)
@@ -121,8 +127,8 @@ end
 @browser.goto 'https://play.rubyconference.by/game'
 
 @head_img_counter = 0
-@browser.wait_until(200){ any_header_exist? }
+@browser.wait_until(200) { any_header_exist? }
 @header = ''
-@old_img_url = '' 
+@old_img_url = ''
 
 game_loop
