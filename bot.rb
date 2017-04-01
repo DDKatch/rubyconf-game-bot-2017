@@ -3,16 +3,12 @@ require 'pry'
 require 'google/cloud/vision'
 require 'watir'
 
-@browser = Watir::Browser.new
-@browser.goto 'https://play.rubyconference.by/game'
-
 # Your Google Cloud Platform project ID
 PROJECT_ID = "i-enterprise-163118"
 
 # Instantiates a client
 @vision = Google::Cloud::Vision.new project: PROJECT_ID
 
-IMG_PATH = "./images/temp.png"
 EXCEPTIONS_MERGED = [
   'Added option to set specific revision when using Subversion as SCM',
   'traditional make sense with `ActiveSupport::TaggedLogging`',
@@ -91,7 +87,7 @@ def restart_game!
 end
 
 def game_loop
-  until !game_over? do
+  until game_over? do
     if @head_img_counter < 15 
       @browser.wait_until(60) { pr_title_old? }
     else
@@ -120,6 +116,9 @@ def game_loop
   end
   restart_game!
 end
+
+@browser = Watir::Browser.new
+@browser.goto 'https://play.rubyconference.by/game'
 
 @head_img_counter = 0
 @browser.wait_until(200){ any_header_exist? }
